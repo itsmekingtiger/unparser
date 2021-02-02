@@ -6,15 +6,9 @@ import (
 	"strings"
 )
 
+// PathRouter just hold root node
 type PathRouter struct {
 	root *node
-}
-
-type node struct {
-	path     string
-	children []*node
-	handler  func()
-	wildcard *node
 }
 
 // DefaultPathRouter make PathRouter with root baseurl
@@ -23,10 +17,7 @@ type node struct {
 //
 func DefaultPathRouter() *PathRouter {
 	return &PathRouter{
-		root: &node{
-			path:     "/",
-			children: make([]*node, 0, 2),
-		},
+		root: newNode("/"),
 	}
 }
 
@@ -53,16 +44,6 @@ func (P *PathRouter) Add(rawPath string) {
 
 }
 
-// MatchResult represent result of Match function
-//
-//   * `IsMatch`: Whether match or not
-//   * `PathVariables`: Matching values of wildcards
-//     - even IsMatch false, PathVariables would resolved
-type MatchResult struct {
-	IsMatch       bool
-	PathVariables map[string]string
-}
-
 // Match resolve given path match or not
 //
 func (P PathRouter) Match(rawPath string) *MatchResult {
@@ -83,8 +64,32 @@ func (P PathRouter) Print() {
 	P.root.print(0, false)
 }
 
+type node struct {
+	path     string
+	children []*node
+	handler  func()
+	wildcard *node
+}
+
+func newNode(rawPath string) *node {
+	return &node{
+		path:     rawPath,
+		children: make([]*node, 0, 2),
+	}
+}
+
 func (N *node) parse(rawPath string) {
 
+}
+
+// MatchResult represent result of Match function
+//
+//   * `IsMatch`: Whether match or not
+//   * `PathVariables`: Matching values of wildcards
+//     - even IsMatch false, PathVariables would resolved
+type MatchResult struct {
+	IsMatch       bool
+	PathVariables map[string]string
 }
 
 func (N *node) match(rawPath []string, mRes *MatchResult) {
@@ -125,13 +130,6 @@ func (N *node) setWildcard(rawPath string) *node {
 	node := newNode(rawPath)
 	N.wildcard = node
 	return node
-}
-
-func newNode(rawPath string) *node {
-	return &node{
-		path:     rawPath,
-		children: make([]*node, 0, 2),
-	}
 }
 
 // 주어진 path 배열 재귀적으로 추가
