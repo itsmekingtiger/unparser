@@ -2,6 +2,7 @@ package unparser
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -13,7 +14,7 @@ type node struct {
 	path     string
 	children []*node
 	handler  func()
-	wildcard string
+	wildcard *node
 }
 
 /*
@@ -40,7 +41,7 @@ func (P *PathRouter) Parse(rawPath string) {
 }
 
 func (P *PathRouter) Add(rawPath string) {
-	fmt.Println(rawPath)
+	// fmt.Println(rawPath)
 	nodestrings := strings.Split(rawPath, "/")
 	if rawPath == "/" {
 		nodestrings[0] = "/"
@@ -55,36 +56,65 @@ type MatchResult struct {
 	Wildcard map[string]string
 }
 
-func (P PathRouter) Match(rawPath string) bool {
+func (P PathRouter) Match(rawPath string) *MatchResult {
+
+	mRes := &MatchResult{}
+	mRes.IsMatch = false
+	mRes.Wildcard = make(map[string]string)
 	nodestrings := strings.Split(rawPath, "/")
 	if rawPath == "/" {
 		nodestrings[0] = "/"
 	}
 
-	return P.root.match(nodestrings[1:])
+	P.root.match(nodestrings[1:], mRes)
+	return mRes
 }
 
 func (P PathRouter) Print() {
-	P.root.print(0)
+	P.root.print(0, false)
 }
 
 func (N *node) parse(rawPath string) {
 
 }
 
-func (N *node) match(rawPath []string) bool {
-	if len(rawPath) == 0 {
-		return true
-	}
+func (N *node) match(rawPath []string, mRes *MatchResult) {
+	// fmt.Println(rawPath[0])
 	n := N.findChild(rawPath[0])
 	if n == nil {
-		return false
+		mRes.IsMatch = false
+		if N.wildcard != nil {
+			mRes.Wildcard[N.wildcard.path] = rawPath[0]
+			mRes.IsMatch = true
+			n = N.wildcard
+		} else {
+			return
+		}
 	}
-	return n.match(rawPath[1:])
+
+	if len(rawPath[1:]) == 0 {
+		mRes.IsMatch = true
+		return
+	}
+	n.match(rawPath[1:], mRes)
 }
+
 func (N *node) append(rawPath string) *node {
 	node := newNode(rawPath)
 	N.children = append(N.children, node)
+	return node
+}
+
+func (N *node) setWildcard(rawPath string) *node {
+	if N.wildcard != nil {
+		if N.wildcard.path != rawPath {
+			fmt.Println("ONLY ONE WILDCARD NAME CAN BE USED IN EACH PATH POSITION")
+			os.Exit(1)
+		}
+		return N.wildcard
+	}
+	node := newNode(rawPath)
+	N.wildcard = node
 	return node
 }
 
@@ -128,7 +158,8 @@ func (N *node) findChild(rawPath string) *node {
 
 func (N *node) findOrCreateChild(rawPath string) *node {
 	if rawPath[0] == '$' {
-
+		// fmt.Printf("딸라는: %s\n", rawPath)
+		return N.setWildcard(rawPath[1:])
 	}
 
 	n := N.findChild(rawPath)
@@ -138,14 +169,21 @@ func (N *node) findOrCreateChild(rawPath string) *node {
 	return N.append(rawPath)
 }
 
-func (N node) print(depth int) {
+func (N node) print(depth int, wildcard bool) {
 	indent := ""
 	for i := 0; i < depth; i++ {
 		indent += "  "
 	}
-	fmt.Printf("%s- %s\n", indent, N.path)
+	if wildcard {
+		fmt.Printf("%s- ${%s}\n", indent, N.path)
+	} else {
+		fmt.Printf("%s- %s\n", indent, N.path)
+	}
 
 	for _, child := range N.children {
-		child.print(depth + 1)
+		child.print(depth+1, false)
+	}
+	if N.wildcard != nil {
+		N.wildcard.print(depth+1, true)
 	}
 }
