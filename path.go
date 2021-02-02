@@ -13,6 +13,7 @@ type node struct {
 	path     string
 	children []*node
 	handler  func()
+	wildcard string
 }
 
 /*
@@ -49,13 +50,18 @@ func (P *PathRouter) Add(rawPath string) {
 
 }
 
-func (P PathRouter) Match(rawPath string) {
+type MatchResult struct {
+	IsMatch  bool
+	Wildcard map[string]string
+}
+
+func (P PathRouter) Match(rawPath string) bool {
 	nodestrings := strings.Split(rawPath, "/")
 	if rawPath == "/" {
 		nodestrings[0] = "/"
 	}
 
-	P.root.match(nodestrings)
+	return P.root.match(nodestrings[1:])
 }
 
 func (P PathRouter) Print() {
@@ -67,17 +73,14 @@ func (N *node) parse(rawPath string) {
 }
 
 func (N *node) match(rawPath []string) bool {
-	if N.path == rawPath[0] {
-		if len(rawPath) == 0 {
-			return true
-		}
-		for _, c := range N.children {
-			if c.match(rawPath) {
-				return true
-			}
-		}
+	if len(rawPath) == 0 {
+		return true
 	}
-	return false
+	n := N.findChild(rawPath[0])
+	if n == nil {
+		return false
+	}
+	return n.match(rawPath[1:])
 }
 func (N *node) append(rawPath string) *node {
 	node := newNode(rawPath)
@@ -111,6 +114,9 @@ func (N *node) hasChild(rawPath string) bool {
 	return false
 }
 
+// func (N *node) findWildCard(rawPath string) *node {
+// }
+
 func (N *node) findChild(rawPath string) *node {
 	for _, c := range N.children {
 		if c.path == rawPath {
@@ -121,19 +127,15 @@ func (N *node) findChild(rawPath string) *node {
 }
 
 func (N *node) findOrCreateChild(rawPath string) *node {
-	/// 1
+	if rawPath[0] == '$' {
+
+	}
+
 	n := N.findChild(rawPath)
 	if n != nil {
 		return n
 	}
 	return N.append(rawPath)
-
-	/// 2
-	// n := N.findChild(rawPath)
-	// if n == nil {
-	// 	n = N.append(rawPath)
-	// }
-	// return n
 }
 
 func (N node) print(depth int) {

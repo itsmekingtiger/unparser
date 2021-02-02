@@ -1,6 +1,10 @@
 package main
 
-import "github.com/itsmekingtiger/unparser"
+import (
+	"fmt"
+
+	"github.com/itsmekingtiger/unparser"
+)
 
 func main() {
 	var r = unparser.DefaultPathRouter()
@@ -22,4 +26,8 @@ func main() {
 	r.Add("/pet/2/age")
 
 	r.Print()
+
+	fmt.Println(r.Match("/user"))
+	fmt.Println(r.Match("/user/Jhon"))
+	fmt.Println(r.Match("/user/Song"))
 }
