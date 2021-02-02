@@ -17,14 +17,10 @@ type node struct {
 	wildcard *node
 }
 
-/*
-   user/1
-   /user/1
-   /user/1/post/1
-*/
+// DefaultPathRouter make PathRouter with root baseurl
 //
-// /user/:id
-// /attr/:attr/prop/:prop
+//   * BaseURL will be `/`
+//
 func DefaultPathRouter() *PathRouter {
 	return &PathRouter{
 		root: &node{
@@ -40,6 +36,12 @@ func (P *PathRouter) Parse(rawPath string) {
 	}
 }
 
+// Add set endpoint
+//
+//   * Can use wildcard with `$`:
+//     - `/user/$id/`
+//     - `/user/$id/name`
+//     - `/user/$id/age`
 func (P *PathRouter) Add(rawPath string) {
 	// fmt.Println(rawPath)
 	nodestrings := strings.Split(rawPath, "/")
@@ -51,16 +53,22 @@ func (P *PathRouter) Add(rawPath string) {
 
 }
 
+// MatchResult represent result of Match function
+//
+//   * `IsMatch`: Whether match or not
+//   * `PathVariables`: Matching values of wildcards
+//     - even IsMatch false, PathVariables would resolved
 type MatchResult struct {
-	IsMatch  bool
-	Wildcard map[string]string
+	IsMatch       bool
+	PathVariables map[string]string
 }
 
+// Match resolve given path match or not
+//
 func (P PathRouter) Match(rawPath string) *MatchResult {
-
 	mRes := &MatchResult{}
 	mRes.IsMatch = false
-	mRes.Wildcard = make(map[string]string)
+	mRes.PathVariables = make(map[string]string)
 	nodestrings := strings.Split(rawPath, "/")
 	if rawPath == "/" {
 		nodestrings[0] = "/"
@@ -70,6 +78,7 @@ func (P PathRouter) Match(rawPath string) *MatchResult {
 	return mRes
 }
 
+// Print show router's schema
 func (P PathRouter) Print() {
 	P.root.print(0, false)
 }
@@ -84,7 +93,7 @@ func (N *node) match(rawPath []string, mRes *MatchResult) {
 	if n == nil {
 		mRes.IsMatch = false
 		if N.wildcard != nil {
-			mRes.Wildcard[N.wildcard.path] = rawPath[0]
+			mRes.PathVariables[N.wildcard.path] = rawPath[0]
 			mRes.IsMatch = true
 			n = N.wildcard
 		} else {
