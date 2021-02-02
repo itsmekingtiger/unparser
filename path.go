@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+type matchHandler func(*MatchResult)
+
 // PathRouter just hold root node
 type PathRouter struct {
 	root *node
@@ -33,14 +35,14 @@ func (P *PathRouter) Parse(rawPath string) {
 //     - `/user/$id/`
 //     - `/user/$id/name`
 //     - `/user/$id/age`
-func (P *PathRouter) Add(rawPath string) {
+func (P *PathRouter) Add(rawPath string, handler matchHandler) {
 	// fmt.Println(rawPath)
 	nodestrings := strings.Split(rawPath, "/")
 	if rawPath == "/" {
 		nodestrings[0] = "/"
 	}
 
-	P.root.add(nodestrings[1:])
+	P.root.add(nodestrings[1:], handler)
 
 }
 
@@ -67,7 +69,7 @@ func (P PathRouter) Print() {
 type node struct {
 	path     string
 	children []*node
-	handler  func()
+	handler  matchHandler
 	wildcard *node
 }
 
@@ -93,6 +95,12 @@ type MatchResult struct {
 }
 
 func (N *node) match(rawPath []string, mRes *MatchResult) {
+	if len(rawPath) == 0 {
+		// fmt.Println(N.handler)
+		N.handler(mRes)
+		return
+	}
+
 	// fmt.Println(rawPath[0])
 	n := N.findChild(rawPath[0])
 	if n == nil {
@@ -105,12 +113,12 @@ func (N *node) match(rawPath []string, mRes *MatchResult) {
 			return
 		}
 	}
-
-	if len(rawPath[1:]) == 0 {
-		mRes.IsMatch = true
-		return
+	mRes.IsMatch = true
+	if len(rawPath) == 0 {
+		n.match(rawPath, mRes)
+	} else {
+		n.match(rawPath[1:], mRes)
 	}
-	n.match(rawPath[1:], mRes)
 }
 
 func (N *node) append(rawPath string) *node {
@@ -133,13 +141,15 @@ func (N *node) setWildcard(rawPath string) *node {
 }
 
 // 주어진 path 배열 재귀적으로 추가
-func (N *node) add(rawPath []string) {
+func (N *node) add(rawPath []string, handler matchHandler) {
 	if len(rawPath) == 0 {
+		// fmt.Printf("%s에 콜백 등록\n", N.path)
+		N.handler = handler
 		return
 	}
 
 	n := N.findOrCreateChild(rawPath[0])
-	n.add(rawPath[1:])
+	n.add(rawPath[1:], handler)
 }
 
 func (N *node) hasChild(rawPath string) bool {
